@@ -21,7 +21,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.koltondecker.cocktailgenerator.ui.screens.AuthScreen
 import com.koltondecker.cocktailgenerator.ui.screens.BrowseScreen
 import com.koltondecker.cocktailgenerator.ui.screens.DetailScreen
 import com.koltondecker.cocktailgenerator.ui.screens.FavoritesScreen
@@ -37,8 +36,13 @@ private sealed class Dest(val route: String, val label: String, val icon: ImageV
 
 private val tabs = listOf(Dest.Home, Dest.Pantry, Dest.Browse, Dest.Favorites)
 
+/**
+ * Nav graph shown only when the user is authenticated. Auth routing is handled
+ * one level up by [com.koltondecker.cocktailgenerator.MainActivity]'s AppRoot,
+ * which observes session status and swaps this graph in/out.
+ */
 @Composable
-fun AppNav() {
+fun SignedInNav(onSignOut: () -> Unit) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination
@@ -71,13 +75,17 @@ fun AppNav() {
             startDestination = Dest.Home.route,
             modifier = Modifier.padding(padding)
         ) {
-            composable("auth")           { AuthScreen(onSignedIn = { nav.navigate(Dest.Home.route) { popUpTo("auth") { inclusive = true } } }) }
-            composable(Dest.Home.route)     { HomeScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
+            composable(Dest.Home.route) {
+                HomeScreen(
+                    onOpenCocktail = { id -> nav.navigate("cocktail/$id") },
+                    onSignOut = onSignOut,
+                )
+            }
             composable(Dest.Pantry.route)   { PantryScreen() }
             composable(Dest.Browse.route)   { BrowseScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
             composable(Dest.Favorites.route){ FavoritesScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
-            composable("cocktail/{id}")     { entry ->
-                val id = entry.arguments?.getString("id")?.toLongOrNull() ?: return@composable
+            composable("cocktail/{id}") { backEntry ->
+                val id = backEntry.arguments?.getString("id")?.toLongOrNull() ?: return@composable
                 DetailScreen(cocktailId = id, onBack = { nav.popBackStack() })
             }
         }

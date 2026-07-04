@@ -1,3 +1,8 @@
 sdk.dir=/Users/you/Library/Android/sdk
 SUPABASE_URL=http://10.0.2.2:54321
 SUPABASE_ANON_KEY=REPLACE_ME_WITH_LOCAL_SUPABASE_ANON_KEY
+
+# OAuth 2.0 *Web* Client ID from Google Cloud console (used by the
+# Credential Manager Sign-in-with-Google flow). Leave blank to hide the
+# "Continue with Google" button; the email/password flow still works.
+GOOGLE_WEB_CLIENT_ID=
