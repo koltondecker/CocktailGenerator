@@ -1,0 +1,38 @@
+name: scraper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scraper/**"
+      - ".github/workflows/scraper.yml"
+  pull_request:
+    paths:
+      - "scraper/**"
+      - ".github/workflows/scraper.yml"
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync deps
+        run: uv sync --all-groups
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Pytest
+        run: uv run pytest

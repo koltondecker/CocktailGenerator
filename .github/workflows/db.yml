@@ -1,0 +1,47 @@
+name: db
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "db/**"
+      - ".github/workflows/db.yml"
+  pull_request:
+    paths:
+      - "db/**"
+      - ".github/workflows/db.yml"
+
+jobs:
+  psql-parse:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap auth.users stub
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "create schema if not exists auth;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "create table if not exists auth.users(id uuid primary key);"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "create or replace function auth.uid() returns uuid language sql as \$\$ select null::uuid \$\$;"
+
+      - name: Apply migrations
+        run: |
+          for f in db/supabase/migrations/*.sql; do
+            echo "==> $f"
+            PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Apply seed
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -f db/seed/categories_and_common_ingredients.sql
