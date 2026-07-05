@@ -19,7 +19,7 @@ Single monorepo `cocktail-generator`. Simple to iterate on early; splittable lat
 cocktail-generator/
 ├── android/          # Kotlin/Compose app (Gradle)
 ├── scraper/          # Python data pipeline
-├── db/               # Supabase SQL migrations + seed scripts
+├── supabase/         # Postgres schema, RLS, RPCs (standard Supabase layout)
 ├── docs/             # ADRs, schema diagram, scraping notes
 ├── .github/workflows # CI for android build + scraper lint
 └── README.md
@@ -83,7 +83,7 @@ This one function powers "makeable now" (`missing_allowed=0`) and "almost there"
 
 ## Setup / CI
 
-- `db/` uses Supabase CLI for local dev (`supabase start` spins up local Postgres + auth)
+- `supabase/` follows the Supabase CLI convention (`supabase start` for local Postgres + auth); the Supabase Dashboard's GitHub integration auto-deploys migrations from `supabase/migrations/` on push to `main`
 - SQL migrations checked in; RLS policies in a dedicated migration
 - GitHub Actions: android build + lint, scraper ruff + pytest
 

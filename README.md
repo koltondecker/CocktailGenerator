@@ -14,7 +14,7 @@ Android app that helps you discover cocktails you can actually make based on wha
 cocktail-generator/
 ├── android/          # Kotlin/Compose app (Gradle)
 ├── scraper/          # Python data pipeline (uv)
-├── db/               # Supabase SQL migrations + seed
+├── supabase/         # Postgres schema, RLS, RPCs (standard Supabase layout)
 ├── docs/             # Plan, ADRs, schema notes
 └── .github/workflows # CI
 ```
@@ -30,9 +30,8 @@ cocktail-generator/
 ### Local backend
 
 ```bash
-cd db
 supabase start          # spins up local Postgres + Auth on localhost
-supabase db reset       # applies migrations under supabase/migrations
+supabase db reset       # applies everything under supabase/migrations
 ```
 
 Set the local anon key and URL in `android/local.properties` (see `android/README.md`).

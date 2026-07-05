@@ -30,11 +30,9 @@ scraper/*.egg-info/
 scraper/cache/
 
 # --- Supabase ---
-db/.branches/
-db/.temp/
-db/supabase/.branches/
-db/supabase/.temp/
-db/supabase/functions/**/dist/
+supabase/.branches/
+supabase/.temp/
+supabase/functions/**/dist/
 
 # --- Env / secrets ---
 .env

@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "db/**"
+      - "supabase/**"
       - ".github/workflows/db.yml"
   pull_request:
     paths:
-      - "db/**"
+      - "supabase/**"
       - ".github/workflows/db.yml"
 
 jobs:
@@ -36,12 +36,7 @@ jobs:
 
       - name: Apply migrations
         run: |
-          for f in db/supabase/migrations/*.sql; do
+          for f in supabase/migrations/*.sql; do
             echo "==> $f"
             PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"
           done
-
-      - name: Apply seed
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -f db/seed/categories_and_common_ingredients.sql
