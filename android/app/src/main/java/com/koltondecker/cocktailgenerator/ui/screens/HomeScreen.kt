@@ -17,12 +17,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,7 +33,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.koltondecker.cocktailgenerator.domain.model.CocktailMatch
 import com.koltondecker.cocktailgenerator.ui.components.CocktailPosterCard
+import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onOpenCocktail: (Long) -> Unit,
@@ -39,52 +43,50 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val ui by vm.state.collectAsStateWithLifecycle()
+    val snackbarHost = LocalSnackbarHostState.current
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        HomeHeader(onSignOut = onSignOut)
+    LaunchedEffect(ui.errorMessage) {
+        val msg = ui.errorMessage ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(msg)
+        vm.clearError()
+    }
 
-        ui.errorMessage?.let { msg ->
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(12.dp),
-                )
-            }
-        }
+    PullToRefreshBox(
+        isRefreshing = ui.refreshing,
+        onRefresh = vm::refresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            HomeHeader(onSignOut = onSignOut)
 
-        when {
-            ui.loading -> Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
+            when {
+                ui.loading -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator() }
 
-            ui.canMake.isEmpty() && ui.almost.isEmpty() -> EmptyHome()
+                ui.canMake.isEmpty() && ui.almost.isEmpty() -> EmptyHome()
 
-            else -> {
-                CocktailRail(
-                    title = "You can make (${ui.canMake.size})",
-                    subtitle = "Tonight's shortlist based on your pantry.",
-                    items = ui.canMake,
-                    onOpenCocktail = onOpenCocktail,
-                    emptyMessage = "Nothing you can make yet — add some pantry items.",
-                )
-                Spacer(Modifier.height(24.dp))
-                CocktailRail(
-                    title = "One ingredient away",
-                    subtitle = "Pick something up on the way home.",
-                    items = ui.almost,
-                    onOpenCocktail = onOpenCocktail,
-                    emptyMessage = "Nothing close to ready right now.",
-                )
-                Spacer(Modifier.height(24.dp))
+                else -> {
+                    CocktailRail(
+                        title = "You can make (${ui.canMake.size})",
+                        subtitle = "Tonight's shortlist based on your pantry.",
+                        items = ui.canMake,
+                        onOpenCocktail = onOpenCocktail,
+                        emptyMessage = "Nothing you can make yet — add some pantry items.",
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    CocktailRail(
+                        title = "One ingredient away",
+                        subtitle = "Pick something up on the way home.",
+                        items = ui.almost,
+                        onOpenCocktail = onOpenCocktail,
+                        emptyMessage = "Nothing close to ready right now.",
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
             }
         }
     }

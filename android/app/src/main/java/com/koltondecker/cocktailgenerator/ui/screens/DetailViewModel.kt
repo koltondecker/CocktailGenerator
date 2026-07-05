@@ -26,6 +26,7 @@ data class IngredientRowUi(
 
 data class DetailUiState(
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
     val cocktail: CocktailDetail? = null,
     val ingredientRows: List<IngredientRowUi> = emptyList(),
     val favorited: Boolean = false,
@@ -65,12 +66,21 @@ class DetailViewModel @Inject constructor(
         initialValue = DetailUiState(),
     )
 
-    init {
-        load()
-    }
+    init { load() }
 
-    private fun load() {
-        internal.update { it.copy(loading = true, errorMessage = null) }
+    private fun load() = fetch(initial = true)
+
+    /**
+     * Re-pull cocktail + favorite + note. Preserves any locally-dirty note
+     * edits so an accidental pull doesn't blow the user's in-progress work.
+     */
+    fun refresh() = fetch(initial = false)
+
+    private fun fetch(initial: Boolean) {
+        if (internal.value.refreshing) return
+        internal.update {
+            it.copy(loading = initial, refreshing = !initial, errorMessage = null)
+        }
         viewModelScope.launch {
             runCatching {
                 val detail = cocktailsRepository.getCocktailDetail(cocktailId)
@@ -79,18 +89,24 @@ class DetailViewModel @Inject constructor(
                 Triple(detail, favorited, note)
             }.onSuccess { (detail, favorited, note) ->
                 internal.update {
+                    val keepDirty = it.noteDirty
                     it.copy(
                         loading = false,
+                        refreshing = false,
                         cocktail = detail,
                         favorited = favorited,
-                        noteBody = note?.body.orEmpty(),
-                        noteRating = note?.personalRating,
-                        noteDirty = false,
+                        noteBody = if (keepDirty) it.noteBody else note?.body.orEmpty(),
+                        noteRating = if (keepDirty) it.noteRating else note?.personalRating,
+                        noteDirty = keepDirty,
                     )
                 }
             }.onFailure { err ->
                 internal.update {
-                    it.copy(loading = false, errorMessage = err.message ?: "Couldn't load cocktail.")
+                    it.copy(
+                        loading = false,
+                        refreshing = false,
+                        errorMessage = err.message ?: "Couldn't load cocktail.",
+                    )
                 }
             }
         }

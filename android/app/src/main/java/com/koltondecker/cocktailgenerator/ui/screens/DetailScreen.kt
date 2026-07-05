@@ -36,11 +36,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.koltondecker.cocktailgenerator.domain.model.CocktailDetail
+import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +60,13 @@ fun DetailScreen(
     vm: DetailViewModel = hiltViewModel(),
 ) {
     val ui by vm.state.collectAsStateWithLifecycle()
+    val snackbarHost = LocalSnackbarHostState.current
+
+    LaunchedEffect(ui.errorMessage) {
+        val msg = ui.errorMessage ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(msg)
+        vm.clearError()
+    }
 
     Scaffold(
         topBar = {
@@ -82,7 +90,11 @@ fun DetailScreen(
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        PullToRefreshBox(
+            isRefreshing = ui.refreshing,
+            onRefresh = vm::refresh,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
             when {
                 ui.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()
@@ -98,7 +110,6 @@ fun DetailScreen(
                     onNoteBodyChange = vm::onNoteBodyChange,
                     onNoteRatingChange = vm::onNoteRatingChange,
                     onSaveNote = vm::saveNote,
-                    onDismissError = vm::clearError,
                 )
             }
         }
@@ -112,7 +123,6 @@ private fun DetailContent(
     onNoteBodyChange: (String) -> Unit,
     onNoteRatingChange: (Int?) -> Unit,
     onSaveNote: () -> Unit,
-    onDismissError: () -> Unit,
 ) {
     val cocktail = ui.cocktail ?: return
     val uriHandler = LocalUriHandler.current
@@ -132,28 +142,6 @@ private fun DetailContent(
                     .aspectRatio(16f / 10f)
                     .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)),
             )
-        }
-
-        ui.errorMessage?.let { msg ->
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = msg,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    TextButton(onClick = onDismissError) { Text("Dismiss") }
-                }
-            }
         }
 
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {

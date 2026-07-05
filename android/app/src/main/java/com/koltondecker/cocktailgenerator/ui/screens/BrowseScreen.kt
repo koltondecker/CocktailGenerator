@@ -1,6 +1,5 @@
 package com.koltondecker.cocktailgenerator.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +30,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.koltondecker.cocktailgenerator.domain.model.CocktailMatch
+import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,13 @@ fun BrowseScreen(
     vm: BrowseViewModel = hiltViewModel(),
 ) {
     val ui by vm.state.collectAsStateWithLifecycle()
+    val snackbarHost = LocalSnackbarHostState.current
+
+    LaunchedEffect(ui.errorMessage) {
+        val msg = ui.errorMessage ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(msg)
+        vm.clearError()
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -83,29 +91,20 @@ fun BrowseScreen(
             }
         }
 
-        ui.errorMessage?.let { msg ->
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(12.dp),
+        PullToRefreshBox(
+            isRefreshing = ui.refreshing,
+            onRefresh = vm::refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            val visible = ui.visibleResults
+            when {
+                ui.loading -> LoadingBox()
+                visible.isEmpty() -> EmptyBox(emptyMessageFor(ui.tab))
+                else -> CocktailList(
+                    results = visible,
+                    onOpenCocktail = onOpenCocktail,
                 )
             }
-        }
-
-        val visible = ui.visibleResults
-        when {
-            ui.loading -> LoadingBox()
-            visible.isEmpty() -> EmptyBox(emptyMessageFor(ui.tab))
-            else -> CocktailList(
-                results = visible,
-                onOpenCocktail = onOpenCocktail,
-            )
         }
     }
 

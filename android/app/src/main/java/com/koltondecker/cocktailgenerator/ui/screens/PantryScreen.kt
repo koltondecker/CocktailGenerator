@@ -17,13 +17,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,10 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.koltondecker.cocktailgenerator.domain.model.Ingredient
+import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantryScreen(vm: PantryViewModel = hiltViewModel()) {
     val ui by vm.state.collectAsStateWithLifecycle()
+    val snackbarHost = LocalSnackbarHostState.current
+
+    LaunchedEffect(ui.errorMessage) {
+        val msg = ui.errorMessage ?: return@LaunchedEffect
+        snackbarHost.showSnackbar(msg)
+        vm.dismissError()
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Header()
@@ -45,26 +57,17 @@ fun PantryScreen(vm: PantryViewModel = hiltViewModel()) {
         )
         Spacer(Modifier.height(8.dp))
 
-        ui.errorMessage?.let { msg ->
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(12.dp),
-                )
+        PullToRefreshBox(
+            isRefreshing = ui.refreshing,
+            onRefresh = vm::refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when {
+                ui.loading -> LoadingBox()
+                ui.groups.isEmpty() && ui.query.isBlank() -> EmptyBox("No ingredients yet — try again in a moment.")
+                ui.groups.isEmpty() -> EmptyBox("Nothing matches '${ui.query}'.")
+                else -> PantryList(groups = ui.groups, onToggle = vm::setInPantry)
             }
-        }
-
-        when {
-            ui.loading -> LoadingBox()
-            ui.groups.isEmpty() && ui.query.isBlank() -> EmptyBox("No ingredients yet — try again in a moment.")
-            ui.groups.isEmpty() -> EmptyBox("Nothing matches '${ui.query}'.")
-            else -> PantryList(groups = ui.groups, onToggle = vm::setInPantry)
         }
     }
 }

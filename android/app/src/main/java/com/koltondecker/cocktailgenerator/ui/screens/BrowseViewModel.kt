@@ -23,6 +23,7 @@ data class BrowseUiState(
     val tab: BrowseTab = BrowseTab.CAN_MAKE,
     val filters: MatchFilters = MatchFilters(),
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
     val filterSheetOpen: Boolean = false,
     val allResults: List<CocktailMatch> = emptyList(),
     val errorMessage: String? = null,
@@ -43,7 +44,7 @@ class BrowseViewModel @Inject constructor(
     private val _state = MutableStateFlow(BrowseUiState())
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
-    init { refresh() }
+    init { load() }
 
     fun selectTab(tab: BrowseTab)   = _state.update { it.copy(tab = tab) }
     fun openFilters()               = _state.update { it.copy(filterSheetOpen = true) }
@@ -52,19 +53,36 @@ class BrowseViewModel @Inject constructor(
 
     fun applyFilters(filters: MatchFilters) {
         _state.update { it.copy(filters = filters, filterSheetOpen = false) }
-        refresh()
+        // A filter change is closer to a fresh load than a pull-refresh —
+        // show the full-screen spinner while results reshape.
+        load()
     }
 
-    fun refresh() {
+    private fun load() = fetch(initial = true)
+
+    fun refresh() = fetch(initial = false)
+
+    private fun fetch(initial: Boolean) {
+        if (_state.value.refreshing) return
         val filters = _state.value.filters
-        _state.update { it.copy(loading = true, errorMessage = null) }
+        _state.update {
+            it.copy(loading = initial, refreshing = !initial, errorMessage = null)
+        }
         viewModelScope.launch {
             runCatching { repository.match(filters = filters) }
                 .onSuccess { results ->
-                    _state.update { it.copy(loading = false, allResults = results) }
+                    _state.update {
+                        it.copy(loading = false, refreshing = false, allResults = results)
+                    }
                 }
                 .onFailure { err ->
-                    _state.update { it.copy(loading = false, errorMessage = err.message ?: "Couldn't load cocktails.") }
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            refreshing = false,
+                            errorMessage = err.message ?: "Couldn't load cocktails.",
+                        )
+                    }
                 }
         }
     }

@@ -15,6 +15,7 @@ import javax.inject.Inject
 
 data class FavoritesUiState(
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
     val results: List<CocktailMatch> = emptyList(),
     val errorMessage: String? = null,
 )
@@ -28,10 +29,17 @@ class FavoritesViewModel @Inject constructor(
     private val _state = MutableStateFlow(FavoritesUiState())
     val state: StateFlow<FavoritesUiState> = _state.asStateFlow()
 
-    init { refresh() }
+    init { load() }
 
-    fun refresh() {
-        _state.update { it.copy(loading = true, errorMessage = null) }
+    private fun load() = fetch(initial = true)
+
+    fun refresh() = fetch(initial = false)
+
+    private fun fetch(initial: Boolean) {
+        if (_state.value.refreshing) return
+        _state.update {
+            it.copy(loading = initial, refreshing = !initial, errorMessage = null)
+        }
         viewModelScope.launch {
             runCatching {
                 val favIds = favoritesRepository.favoriteIds()
@@ -44,10 +52,16 @@ class FavoritesViewModel @Inject constructor(
                     cocktailsRepository.match().filter { it.id in favIds }
                 }
             }.onSuccess { results ->
-                _state.update { it.copy(loading = false, results = results) }
+                _state.update {
+                    it.copy(loading = false, refreshing = false, results = results)
+                }
             }.onFailure { err ->
                 _state.update {
-                    it.copy(loading = false, errorMessage = err.message ?: "Couldn't load favorites.")
+                    it.copy(
+                        loading = false,
+                        refreshing = false,
+                        errorMessage = err.message ?: "Couldn't load favorites.",
+                    )
                 }
             }
         }

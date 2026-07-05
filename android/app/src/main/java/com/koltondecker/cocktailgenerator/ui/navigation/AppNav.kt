@@ -10,9 +10,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -21,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 import com.koltondecker.cocktailgenerator.ui.screens.BrowseScreen
 import com.koltondecker.cocktailgenerator.ui.screens.DetailScreen
 import com.koltondecker.cocktailgenerator.ui.screens.FavoritesScreen
@@ -46,8 +51,10 @@ fun SignedInNav(onSignOut: () -> Unit) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (tabs.any { current?.hierarchy?.any { d -> d.route == it.route } == true }) {
                 NavigationBar {
@@ -70,23 +77,25 @@ fun SignedInNav(onSignOut: () -> Unit) {
             }
         }
     ) { padding ->
-        NavHost(
-            navController = nav,
-            startDestination = Dest.Home.route,
-            modifier = Modifier.padding(padding)
-        ) {
-            composable(Dest.Home.route) {
-                HomeScreen(
-                    onOpenCocktail = { id -> nav.navigate("cocktail/$id") },
-                    onSignOut = onSignOut,
-                )
-            }
-            composable(Dest.Pantry.route)   { PantryScreen() }
-            composable(Dest.Browse.route)   { BrowseScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
-            composable(Dest.Favorites.route){ FavoritesScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
-            composable("cocktail/{id}") {
-                // DetailViewModel reads the "id" nav-arg from SavedStateHandle.
-                DetailScreen(onBack = { nav.popBackStack() })
+        CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+            NavHost(
+                navController = nav,
+                startDestination = Dest.Home.route,
+                modifier = Modifier.padding(padding)
+            ) {
+                composable(Dest.Home.route) {
+                    HomeScreen(
+                        onOpenCocktail = { id -> nav.navigate("cocktail/$id") },
+                        onSignOut = onSignOut,
+                    )
+                }
+                composable(Dest.Pantry.route)   { PantryScreen() }
+                composable(Dest.Browse.route)   { BrowseScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
+                composable(Dest.Favorites.route){ FavoritesScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
+                composable("cocktail/{id}") {
+                    // DetailViewModel reads the "id" nav-arg from SavedStateHandle.
+                    DetailScreen(onBack = { nav.popBackStack() })
+                }
             }
         }
     }

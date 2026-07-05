@@ -14,6 +14,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
     val canMake: List<CocktailMatch> = emptyList(),
     val almost: List<CocktailMatch> = emptyList(),
     val errorMessage: String? = null,
@@ -27,10 +28,21 @@ class HomeViewModel @Inject constructor(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
-    init { refresh() }
+    init { load() }
 
-    fun refresh() {
-        _state.update { it.copy(loading = true, errorMessage = null) }
+    private fun load() = fetch(initial = true)
+
+    fun refresh() = fetch(initial = false)
+
+    /**
+     * [initial] distinguishes the first-load spinner (full-screen) from a
+     * user-initiated pull-refresh (indicator only).
+     */
+    private fun fetch(initial: Boolean) {
+        if (_state.value.refreshing) return
+        _state.update {
+            it.copy(loading = initial, refreshing = !initial, errorMessage = null)
+        }
         viewModelScope.launch {
             // One RPC call, sliced client-side; matches Browse's approach so
             // Home doesn't re-invent the pantry-relative sort order.
@@ -39,6 +51,7 @@ class HomeViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             loading = false,
+                            refreshing = false,
                             canMake = results.filter { r -> r.missingCount == 0 },
                             almost = results.filter { r -> r.missingCount == 1 },
                         )
@@ -46,7 +59,11 @@ class HomeViewModel @Inject constructor(
                 }
                 .onFailure { err ->
                     _state.update {
-                        it.copy(loading = false, errorMessage = err.message ?: "Couldn't load Home.")
+                        it.copy(
+                            loading = false,
+                            refreshing = false,
+                            errorMessage = err.message ?: "Couldn't load Home.",
+                        )
                     }
                 }
         }
