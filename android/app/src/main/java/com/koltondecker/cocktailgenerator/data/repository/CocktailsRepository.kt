@@ -1,10 +1,13 @@
 package com.koltondecker.cocktailgenerator.data.repository
 
+import com.koltondecker.cocktailgenerator.data.remote.dto.CocktailDetailDto
 import com.koltondecker.cocktailgenerator.data.remote.dto.CocktailMatchDto
+import com.koltondecker.cocktailgenerator.domain.model.CocktailDetail
 import com.koltondecker.cocktailgenerator.domain.model.CocktailMatch
 import com.koltondecker.cocktailgenerator.domain.model.MatchFilters
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -38,6 +41,32 @@ class CocktailsRepository @Inject constructor(
             .rpc(function = "match_cocktails", parameters = params)
             .decodeList()
         return rows.map { it.toDomain() }
+    }
+
+    /**
+     * Load one cocktail plus its ingredient rows in a single embedded-resource
+     * query. The `cocktail_ingredients(...)` join follows the FK; the nested
+     * `ingredient:ingredients(...)` follows the ingredient FK so each row
+     * carries the ingredient name without a second round-trip.
+     */
+    suspend fun getCocktailDetail(cocktailId: Long): CocktailDetail {
+        val dto = client.postgrest["cocktails"]
+            .select(
+                columns = Columns.raw(
+                    """
+                    id,name,slug,description,glass,method,garnish,instructions,
+                    difficulty,abv_estimate,flavor_tags,source_url,source_name,image_url,
+                    cocktail_ingredients(
+                        ingredient_id,quantity,unit,is_optional,position,
+                        ingredient:ingredients(id,name,category_id)
+                    )
+                    """.trimIndent().replace("\n", " ")
+                )
+            ) {
+                filter { eq("id", cocktailId) }
+            }
+            .decodeSingle<CocktailDetailDto>()
+        return dto.toDomain()
     }
 
     companion object {

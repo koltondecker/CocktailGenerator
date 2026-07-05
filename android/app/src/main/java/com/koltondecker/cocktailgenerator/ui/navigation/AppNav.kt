@@ -84,9 +84,9 @@ fun SignedInNav(onSignOut: () -> Unit) {
             composable(Dest.Pantry.route)   { PantryScreen() }
             composable(Dest.Browse.route)   { BrowseScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
             composable(Dest.Favorites.route){ FavoritesScreen(onOpenCocktail = { id -> nav.navigate("cocktail/$id") }) }
-            composable("cocktail/{id}") { backEntry ->
-                val id = backEntry.arguments?.getString("id")?.toLongOrNull() ?: return@composable
-                DetailScreen(cocktailId = id, onBack = { nav.popBackStack() })
+            composable("cocktail/{id}") {
+                // DetailViewModel reads the "id" nav-arg from SavedStateHandle.
+                DetailScreen(onBack = { nav.popBackStack() })
             }
         }
     }
