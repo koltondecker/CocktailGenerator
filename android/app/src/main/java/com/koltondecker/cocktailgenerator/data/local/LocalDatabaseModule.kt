@@ -19,7 +19,9 @@ object LocalDatabaseModule {
     fun provideDatabase(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "cocktail_generator.db")
             // Empty catalog until first refresh — no migration story needed yet.
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // Room 2.6.x's no-arg form; upgrade to `dropAllTables=true` when we
+            // move to Room 2.7+.
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

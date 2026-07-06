@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.koltondecker.cocktailgenerator.domain.model.MatchFilters
@@ -72,7 +73,9 @@ fun BrowseFilterSheet(
             Spacer(Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Arrangement.End),
+                // `Alignment.End` is the *horizontal* alignment; `Arrangement.End` here
+                // is a horizontal *arrangement* and won't compile as the second param.
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
             ) {
                 TextButton(onClick = {
                     onApply(MatchFilters())
