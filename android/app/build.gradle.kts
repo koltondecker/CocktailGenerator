@@ -22,8 +22,8 @@ android {
         applicationId = "com.koltondecker.cocktailgenerator"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -45,9 +45,24 @@ android {
         )
     }
 
+    signingConfigs {
+        // Stable debug keystore (committed to the repo) so every CI-built APK
+        // is signed with the same key. Without this, each runner generates a
+        // throwaway keystore and users can't install an updated APK on top of
+        // an older one — Android rejects it as a signature mismatch. Debug
+        // keystores are not secret; this is the standard Android pattern.
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
