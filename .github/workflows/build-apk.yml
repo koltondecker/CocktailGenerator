@@ -1,0 +1,69 @@
+name: build-apk
+
+# Manual-run workflow. Builds a debug APK of the Android app and uploads it
+# as a build artifact you can download and sideload straight onto your phone.
+# Requires two repo secrets:
+#
+#   SUPABASE_URL       — your Supabase project URL (public; safe to embed)
+#   SUPABASE_ANON_KEY  — the ANON key (Dashboard → Settings → API →
+#                        "anon public"). This is designed to be embedded in
+#                        client apps; it is NOT the service_role key.
+#
+# Trigger via Actions → build-apk → "Run workflow". Then Actions → the
+# finished run → scroll to Artifacts → download `cocktail-generator-debug`.
+# Unzip on your phone and open the .apk to install.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Guard against missing secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::error::SUPABASE_URL secret is empty. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_ANON_KEY secret is empty. Grab the *anon* public key from Supabase Dashboard → Settings → API and add it as a repo secret."
+            exit 1
+          fi
+
+      - name: Provision local.properties
+        run: |
+          cat > local.properties <<EOF
+          sdk.dir=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          SUPABASE_URL=${SUPABASE_URL}
+          SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+          GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID}
+          EOF
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cocktail-generator-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
