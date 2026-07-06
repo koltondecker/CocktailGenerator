@@ -38,6 +38,13 @@ fun FavoritesScreen(
     val ui by vm.state.collectAsStateWithLifecycle()
     val snackbarHost = LocalSnackbarHostState.current
 
+    // Silently refresh whenever the screen (re)enters the composition. The
+    // saveState/restoreState nav pattern keeps the ViewModel alive across tab
+    // switches, so without this a newly-hearted cocktail wouldn't appear until
+    // the user swiped-to-refresh. Compose recomposition itself won't fire
+    // twice while the composable is on-screen because Unit doesn't change.
+    LaunchedEffect(Unit) { vm.refresh() }
+
     LaunchedEffect(ui.errorMessage) {
         val msg = ui.errorMessage ?: return@LaunchedEffect
         snackbarHost.showSnackbar(msg)

@@ -10,6 +10,7 @@ data class CocktailMatch(
     val name: String,
     val slug: String,
     val imageUrl: String?,
+    val method: String?,
     val difficulty: Int?,
     val abvEstimate: Double?,
     val flavorTags: List<String>,

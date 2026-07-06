@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LocalBar
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +28,8 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -87,6 +91,21 @@ fun BrowseScreen(
             }
         }
 
+        OutlinedTextField(
+            value = ui.filters.query,
+            onValueChange = vm::onQueryChange,
+            placeholder = { Text("Search cocktails") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(50),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+        )
+
         TabRow(
             selectedTabIndex = ui.tab.ordinal,
             containerColor = MaterialTheme.colorScheme.background,
@@ -123,6 +142,8 @@ fun BrowseScreen(
     if (ui.filterSheetOpen) {
         BrowseFilterSheet(
             current = ui.filters,
+            spirits = ui.spiritOptions,
+            methods = ui.methodOptions,
             onApply = vm::applyFilters,
             onDismiss = vm::closeFilters,
         )

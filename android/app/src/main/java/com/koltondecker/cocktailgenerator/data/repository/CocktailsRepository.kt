@@ -78,14 +78,13 @@ class CocktailsRepository @Inject constructor(
     }
 }
 
+/** Only server-side filters get pushed into the RPC's jsonb param. Everything
+ *  else (favorites toggle, name search, sort) is applied in the ViewModel. */
 private fun MatchFilters.toJson(): JsonObject = buildJsonObject {
     if (baseSpiritIds.isNotEmpty()) {
         put("base_spirit_ids", buildJsonArray { baseSpiritIds.forEach { add(it) } })
     }
-    if (flavorTags.isNotEmpty()) {
-        put("flavor_tags", buildJsonArray { flavorTags.forEach { add(it) } })
+    if (methods.isNotEmpty()) {
+        put("methods", buildJsonArray { methods.forEach { add(it) } })
     }
-    maxDifficulty?.let { put("max_difficulty", it) }
-    minAbv?.let { put("min_abv", it) }
-    maxAbv?.let { put("max_abv", it) }
 }

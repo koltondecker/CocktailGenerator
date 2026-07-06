@@ -2,7 +2,6 @@ package com.koltondecker.cocktailgenerator.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.koltondecker.cocktailgenerator.data.repository.CocktailsRepository
 import com.koltondecker.cocktailgenerator.data.repository.FavoritesRepository
 import com.koltondecker.cocktailgenerator.domain.model.CocktailMatch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +21,6 @@ data class FavoritesUiState(
 
 @HiltViewModel
 class FavoritesViewModel @Inject constructor(
-    private val cocktailsRepository: CocktailsRepository,
     private val favoritesRepository: FavoritesRepository,
 ) : ViewModel() {
 
@@ -41,29 +39,26 @@ class FavoritesViewModel @Inject constructor(
             it.copy(loading = initial, refreshing = !initial, errorMessage = null)
         }
         viewModelScope.launch {
-            runCatching {
-                val favIds = favoritesRepository.favoriteIds()
-                if (favIds.isEmpty()) {
-                    emptyList()
-                } else {
-                    // Reuse match() so each favorite carries missing_count +
-                    // ingredient chips — same UX as Browse without a second
-                    // schema-specific fetch path.
-                    cocktailsRepository.match().filter { it.id in favIds }
+            // Single embedded query — decoupled from `match_cocktails`, so a
+            // favorite still shows up if it has no required ingredients or if
+            // the pantry is empty. This was the cause of the "no favorites"
+            // bug: the previous impl inner-joined through the RPC and filtered
+            // to intersection, which silently dropped rows.
+            runCatching { favoritesRepository.getFavoritedCocktails() }
+                .onSuccess { results ->
+                    _state.update {
+                        it.copy(loading = false, refreshing = false, results = results)
+                    }
                 }
-            }.onSuccess { results ->
-                _state.update {
-                    it.copy(loading = false, refreshing = false, results = results)
+                .onFailure { err ->
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            refreshing = false,
+                            errorMessage = err.message ?: "Couldn't load favorites.",
+                        )
+                    }
                 }
-            }.onFailure { err ->
-                _state.update {
-                    it.copy(
-                        loading = false,
-                        refreshing = false,
-                        errorMessage = err.message ?: "Couldn't load favorites.",
-                    )
-                }
-            }
         }
     }
 
