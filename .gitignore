@@ -16,6 +16,7 @@ android/app/debug/
 *.jar
 *.war
 *.ear
+!android/gradle/wrapper/gradle-wrapper.jar
 
 # --- Python ---
 scraper/.venv/
