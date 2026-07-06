@@ -1,0 +1,50 @@
+name: enrich-photos
+
+# Manual-run workflow. Replaces TheCocktailDB thumbnails with Wikipedia's
+# lead-article photos (professional-grade, freely licensed) for cocktails
+# that have Wikipedia articles.
+#
+# Requires the same `supabase_api_key` (service-role) secret the seed-scraper
+# uses. Trigger via Actions → enrich-photos → "Run workflow".
+
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_url:
+        description: "Supabase project URL"
+        required: true
+        default: "https://nagjlrvlbzolghztacrp.supabase.co"
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: scraper
+    env:
+      SUPABASE_URL: ${{ inputs.supabase_url }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.supabase_api_key }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync deps
+        run: uv sync
+
+      - name: Guard against missing secret
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::supabase_api_key secret is empty."
+            exit 1
+          fi
+
+      - name: Enrich cocktail photos from Wikipedia
+        run: uv run python -m cocktail_scraper.enrich_photos

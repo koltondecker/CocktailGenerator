@@ -13,7 +13,7 @@ import com.koltondecker.cocktailgenerator.data.local.entities.PantryItemEntity
         IngredientEntity::class,
         PantryItemEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

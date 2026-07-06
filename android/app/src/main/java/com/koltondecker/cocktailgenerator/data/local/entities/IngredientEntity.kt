@@ -23,7 +23,13 @@ data class IngredientEntity(
     val name: String,
     val categoryId: Int,
     val isCommon: Boolean,
+    val iconUrl: String? = null,
 ) {
-    fun toDomain(): Ingredient =
-        Ingredient(id = id, name = name, categoryId = categoryId, isCommon = isCommon)
+    fun toDomain(): Ingredient = Ingredient(
+        id = id,
+        name = name,
+        categoryId = categoryId,
+        isCommon = isCommon,
+        iconUrl = iconUrl,
+    )
 }

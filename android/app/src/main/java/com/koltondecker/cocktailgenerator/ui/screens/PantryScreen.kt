@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.koltondecker.cocktailgenerator.domain.model.Ingredient
 import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
 import com.koltondecker.cocktailgenerator.ui.components.categoryEmoji
@@ -169,6 +171,15 @@ private fun PantryList(
                             selected = item.inPantry,
                             onClick = { onToggle(item.ingredient, !item.inPantry) },
                             label = { Text(item.ingredient.name) },
+                            leadingIcon = item.ingredient.iconUrl?.let { url ->
+                                {
+                                    AsyncImage(
+                                        model = url,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            },
                             shape = RoundedCornerShape(50),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = tint.copy(alpha = 0.28f),

@@ -5,4 +5,5 @@ data class Ingredient(
     val name: String,
     val categoryId: Int,
     val isCommon: Boolean,
+    val iconUrl: String? = null,
 )

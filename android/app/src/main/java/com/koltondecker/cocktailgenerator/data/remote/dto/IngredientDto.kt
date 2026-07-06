@@ -11,10 +11,21 @@ data class IngredientDto(
     val name: String,
     @SerialName("category_id") val categoryId: Int,
     @SerialName("is_common") val isCommon: Boolean,
+    @SerialName("icon_url") val iconUrl: String? = null,
 ) {
-    fun toEntity(): IngredientEntity =
-        IngredientEntity(id = id, name = name, categoryId = categoryId, isCommon = isCommon)
+    fun toEntity(): IngredientEntity = IngredientEntity(
+        id = id,
+        name = name,
+        categoryId = categoryId,
+        isCommon = isCommon,
+        iconUrl = iconUrl,
+    )
 
-    fun toDomain(): Ingredient =
-        Ingredient(id = id, name = name, categoryId = categoryId, isCommon = isCommon)
+    fun toDomain(): Ingredient = Ingredient(
+        id = id,
+        name = name,
+        categoryId = categoryId,
+        isCommon = isCommon,
+        iconUrl = iconUrl,
+    )
 }
