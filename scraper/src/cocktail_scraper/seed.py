@@ -104,6 +104,13 @@ def _upsert_recipe(
         return
     cocktail_id = upserted.data[0]["id"]
 
+    # Dedupe by canonical ingredient id — some TheCocktailDB recipes list the
+    # same ingredient twice, and multiple raw names ("Cointreau", "Triple Sec")
+    # can resolve to the same canonical row via aliases. Either case produces
+    # duplicate `(cocktail_id, ingredient_id)` rows which Postgres refuses to
+    # upsert in a single statement (SQLSTATE 21000). Keep the first occurrence
+    # so we preserve the earliest `position`.
+    seen_ingredient_ids: set[int] = set()
     rows: list[dict] = []
     for ing in recipe.ingredients:
         canonical_id = resolver.resolve(ing.raw_name)
@@ -113,6 +120,9 @@ def _upsert_recipe(
             )
         if canonical_id is None:
             continue
+        if canonical_id in seen_ingredient_ids:
+            continue
+        seen_ingredient_ids.add(canonical_id)
         rows.append({
             "cocktail_id": cocktail_id,
             "ingredient_id": canonical_id,
