@@ -1,4 +1,11 @@
-"""Seed the Supabase catalog with cocktails + ingredients from TheCocktailDB."""
+"""Seed the Supabase catalog with cocktails + ingredients from TheCocktailDB.
+
+Any ingredient TheCocktailDB reports that doesn't match a canonical name /
+alias (or fuzzy-match it) is auto-created as a long-tail row in
+`ingredients` (category = Other, is_common = false). That way no cocktail
+loses ingredient rows just because our common-ingredient seed doesn't yet
+carry the exotic stuff (Blue Curaçao, Falernum, etc.).
+"""
 
 from __future__ import annotations
 
@@ -13,7 +20,9 @@ from cocktail_scraper.models import Recipe
 from cocktail_scraper.normalize import CanonicalIngredient, IngredientResolver
 from cocktail_scraper.sources.thecocktaildb import TheCocktailDBSource
 
-UNRESOLVED_LOG = Path("scraper/cache/unresolved_ingredients.csv")
+# CWD-relative — expects to be run from the `scraper/` directory (README + CI
+# workflow both do so).
+UNRESOLVED_LOG = Path("cache/unresolved_ingredients.csv")
 
 
 def main() -> int:
@@ -22,13 +31,14 @@ def main() -> int:
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     client: Client = create_client(url, key)
 
+    other_category_id = _load_other_category_id(client)
     catalog = _load_catalog(client)
-    resolver = IngredientResolver(catalog=catalog, unresolved_log=UNRESOLVED_LOG)
+    resolver = IngredientResolver(catalog=list(catalog), unresolved_log=UNRESOLVED_LOG)
 
     source = TheCocktailDBSource()
     ingested = 0
     for recipe in source.iter_recipes():
-        _upsert_recipe(client, resolver, recipe)
+        _upsert_recipe(client, resolver, other_category_id, recipe)
         ingested += 1
         if ingested % 25 == 0:
             print(f"  ingested {ingested}...", file=sys.stderr)
@@ -45,7 +55,31 @@ def _load_catalog(client: Client) -> list[CanonicalIngredient]:
     ]
 
 
-def _upsert_recipe(client: Client, resolver: IngredientResolver, recipe: Recipe) -> None:
+def _load_other_category_id(client: Client) -> int:
+    """Look up the `Other` ingredient category so we can slot auto-created
+    long-tail ingredients into it. Fails loud if the seed migration didn't run.
+    """
+    result = (
+        client.table("ingredient_categories")
+        .select("id")
+        .eq("name", "Other")
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise RuntimeError(
+            "Missing 'Other' ingredient category — did the "
+            "20260704000004_seed_common_ingredients migration apply?"
+        )
+    return int(result.data[0]["id"])
+
+
+def _upsert_recipe(
+    client: Client,
+    resolver: IngredientResolver,
+    other_category_id: int,
+    recipe: Recipe,
+) -> None:
     payload = {
         "name": recipe.name,
         "slug": recipe.slug,
@@ -74,6 +108,10 @@ def _upsert_recipe(client: Client, resolver: IngredientResolver, recipe: Recipe)
     for ing in recipe.ingredients:
         canonical_id = resolver.resolve(ing.raw_name)
         if canonical_id is None:
+            canonical_id = _get_or_create_ingredient(
+                client, resolver, other_category_id, ing.raw_name
+            )
+        if canonical_id is None:
             continue
         rows.append({
             "cocktail_id": cocktail_id,
@@ -87,6 +125,31 @@ def _upsert_recipe(client: Client, resolver: IngredientResolver, recipe: Recipe)
         client.table("cocktail_ingredients").upsert(
             rows, on_conflict="cocktail_id,ingredient_id"
         ).execute()
+
+
+def _get_or_create_ingredient(
+    client: Client,
+    resolver: IngredientResolver,
+    other_category_id: int,
+    raw_name: str,
+) -> int | None:
+    name = raw_name.strip()
+    if not name:
+        return None
+    canonical = name.title()
+    inserted = (
+        client.table("ingredients")
+        .upsert(
+            {"name": canonical, "category_id": other_category_id, "is_common": False},
+            on_conflict="name",
+        )
+        .execute()
+    )
+    if not inserted.data:
+        return None
+    ingredient_id = int(inserted.data[0]["id"])
+    resolver.add(CanonicalIngredient(id=ingredient_id, name=canonical))
+    return ingredient_id
 
 
 if __name__ == "__main__":

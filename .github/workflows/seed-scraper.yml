@@ -1,0 +1,66 @@
+name: seed-scraper
+
+# Manual-run workflow. Go to Actions → seed-scraper → "Run workflow" to seed
+# the Supabase project below with cocktails + ingredients from TheCocktailDB.
+# Requires a repository secret `supabase_api_key` containing the *service_role*
+# key (not the anon key) — it bypasses RLS so the scraper can write to catalog
+# tables.
+#
+# The URL is public so it lives in this file. If you spin up a different
+# Supabase project, either edit the SUPABASE_URL below or override it via
+# the workflow input at run-time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_url:
+        description: "Supabase project URL (leave default unless targeting a different project)"
+        required: true
+        default: "https://nagjlrvlbzolghztacrp.supabase.co"
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: scraper
+    env:
+      SUPABASE_URL: ${{ inputs.supabase_url }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.supabase_api_key }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync deps
+        run: uv sync
+
+      - name: Guard against missing secret
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::supabase_api_key secret is empty. Set it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "::error::SUPABASE_URL is empty."
+            exit 1
+          fi
+
+      - name: Seed from TheCocktailDB
+        run: uv run python -m cocktail_scraper.seed
+
+      - name: Upload unresolved-ingredients log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unresolved-ingredients
+          path: scraper/cache/unresolved_ingredients.csv
+          if-no-files-found: ignore
+          retention-days: 14

@@ -68,6 +68,19 @@ class IngredientResolver:
         _, _, idx = result
         return self._term_to_id[idx]
 
+    def add(self, ingredient: CanonicalIngredient) -> None:
+        """Extend the catalog at runtime — used by seed.py when it auto-creates
+        a long-tail ingredient row so the next raw name matching this canonical
+        (or any of its aliases) short-circuits to the fast path.
+        """
+        for term in ingredient.all_terms():
+            key = term.lower().strip()
+            if not key or key in self._by_term:
+                continue
+            self._by_term[key] = ingredient.id
+            self._all_terms.append(term)
+            self._term_to_id.append(ingredient.id)
+
     def _log_unresolved(self, raw_name: str) -> None:
         if self._unresolved_log is None:
             return
