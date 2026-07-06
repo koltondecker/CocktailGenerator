@@ -2,19 +2,39 @@ package com.koltondecker.cocktailgenerator.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Amber / copper palette — cocktail-lounge feel. Swap with brand palette when finalized.
-val AmberPrimary = Color(0xFFE0A458)
-val AmberOnPrimary = Color(0xFF1A1103)
-val AmberContainer = Color(0xFF5B3F1E)
-val OnAmberContainer = Color(0xFFFFDEA9)
+// "Midnight lounge" palette — dark-first, warm amber + coral + aqua accents.
 
-val PlumSecondary = Color(0xFF7B3F61)
-val PlumOnSecondary = Color(0xFFFFFFFF)
+// Brand accents
+val Amber = Color(0xFFFFB74A)        // primary — golden pour
+val AmberDeep = Color(0xFFB97416)
+val Coral = Color(0xFFFF6B81)        // secondary — watermelon/negroni
+val CoralDeep = Color(0xFF9C2F44)
+val Aqua = Color(0xFF4DD6C1)         // tertiary — mint/mojito
+val AquaDeep = Color(0xFF0E5F53)
 
-val BackgroundDark = Color(0xFF141010)
-val SurfaceDark = Color(0xFF1E1A19)
-val OnSurfaceDark = Color(0xFFEDE0D4)
+// Dark theme surfaces (deep plum-black, not pure gray)
+val InkBackground = Color(0xFF0E0B14)
+val InkSurface = Color(0xFF181221)
+val InkSurfaceHigh = Color(0xFF241B32)
+val InkOutline = Color(0xFF4A3F5C)
+val Cream = Color(0xFFF5EDE2)        // onSurface — warm off-white
+val CreamMuted = Color(0xFFB3A8C2)   // onSurfaceVariant
 
-val BackgroundLight = Color(0xFFFFF8F2)
-val SurfaceLight = Color(0xFFFFFFFF)
-val OnSurfaceLight = Color(0xFF231A11)
+// Light theme surfaces (warm cream)
+val DayBackground = Color(0xFFFDF7EE)
+val DaySurface = Color(0xFFFFFFFF)
+val DaySurfaceHigh = Color(0xFFF4EAF8)
+val DayInk = Color(0xFF251B31)
+val DayInkMuted = Color(0xFF6D6180)
+
+// Semantic
+val ReadyGreen = Color(0xFF61E2A8)   // "you can make this"
+
+// Gradient stops — sunset pour, used for hero cards / stat tiles / auth bg
+val GradA = Color(0xFFFF8A5C)
+val GradB = Color(0xFFFF5E7E)
+val GradC = Color(0xFF9B5CFF)
+
+// Scrim for text-over-image
+val ScrimTop = Color(0x00000000)
+val ScrimBottom = Color(0xE6120A1C)

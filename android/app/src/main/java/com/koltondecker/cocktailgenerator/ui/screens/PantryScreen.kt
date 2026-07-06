@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,14 +15,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -35,6 +39,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.koltondecker.cocktailgenerator.domain.model.Ingredient
 import com.koltondecker.cocktailgenerator.ui.components.LocalSnackbarHostState
+import com.koltondecker.cocktailgenerator.ui.components.categoryEmoji
+import com.koltondecker.cocktailgenerator.ui.components.categoryTint
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,12 +54,14 @@ fun PantryScreen(vm: PantryViewModel = hiltViewModel()) {
         vm.dismissError()
     }
 
+    val stocked = ui.groups.sumOf { g -> g.items.count { it.inPantry } }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Header()
+        Header(stocked = stocked)
         SearchField(
             query = ui.query,
             onQueryChange = vm::onQueryChange,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 20.dp),
         )
         Spacer(Modifier.height(8.dp))
 
@@ -63,9 +71,11 @@ fun PantryScreen(vm: PantryViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxSize(),
         ) {
             when {
-                ui.loading -> LoadingBox()
-                ui.groups.isEmpty() && ui.query.isBlank() -> EmptyBox("No ingredients yet — try again in a moment.")
-                ui.groups.isEmpty() -> EmptyBox("Nothing matches '${ui.query}'.")
+                ui.loading -> CenterBox { CircularProgressIndicator() }
+                ui.groups.isEmpty() && ui.query.isBlank() ->
+                    CenterBox { Text("No ingredients yet — try again in a moment.") }
+                ui.groups.isEmpty() ->
+                    CenterBox { Text("Nothing matches '${ui.query}'.") }
                 else -> PantryList(groups = ui.groups, onToggle = vm::setInPantry)
             }
         }
@@ -73,17 +83,16 @@ fun PantryScreen(vm: PantryViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun Header() {
-    Text(
-        text = "My Pantry",
-        style = MaterialTheme.typography.headlineLarge,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
-    )
-    Text(
-        text = "Check off what you have on hand.",
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.padding(horizontal = 16.dp),
-    )
+private fun Header(stocked: Int) {
+    Column(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp)) {
+        Text("My Bar", style = MaterialTheme.typography.displayLarge)
+        Text(
+            text = if (stocked == 0) "Tap what's on your shelf to unlock cocktails."
+                   else "$stocked ingredient${if (stocked == 1) "" else "s"} stocked 🍾",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -95,16 +104,20 @@ private fun SearchField(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Search ingredients") },
+        placeholder = { Text("Search your shelf") },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         singleLine = true,
+        shape = RoundedCornerShape(50),
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        ),
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 12.dp),
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PantryList(
     groups: List<PantryCategoryGroup>,
@@ -115,26 +128,39 @@ private fun PantryList(
         modifier = Modifier.fillMaxSize(),
     ) {
         groups.forEach { group ->
+            val tint = categoryTint(group.category.name)
             stickyHeader(key = "cat-${group.category.id}") {
                 Surface(
-                    color = MaterialTheme.colorScheme.surface,
+                    color = MaterialTheme.colorScheme.background,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = group.category.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    ) {
+                        Text(categoryEmoji(group.category.name), style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.padding(start = 8.dp))
+                        Text(
+                            group.category.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                        val have = group.items.count { it.inPantry }
+                        if (have > 0) {
+                            Text(
+                                "  $have/${group.items.size}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = tint,
+                            )
+                        }
+                    }
                 }
             }
-            items(
-                items = listOf(group),
-                key = { "chips-${group.category.id}" },
-            ) { g ->
+            items(items = listOf(group), key = { "chips-${group.category.id}" }) { g ->
                 FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -143,6 +169,18 @@ private fun PantryList(
                             selected = item.inPantry,
                             onClick = { onToggle(item.ingredient, !item.inPantry) },
                             label = { Text(item.ingredient.name) },
+                            shape = RoundedCornerShape(50),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = tint.copy(alpha = 0.28f),
+                                selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = item.inPantry,
+                                borderColor = MaterialTheme.colorScheme.outline,
+                                selectedBorderColor = tint,
+                                selectedBorderWidth = 1.dp,
+                            ),
                         )
                     }
                 }
@@ -152,15 +190,6 @@ private fun PantryList(
 }
 
 @Composable
-private fun LoadingBox() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
-private fun EmptyBox(message: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(message, style = MaterialTheme.typography.bodyLarge)
-    }
+private fun CenterBox(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
 }
